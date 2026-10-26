@@ -1,0 +1,11 @@
+# Agent skills install (local copies from npx skills)
+.agents/
+skills-lock.json
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
