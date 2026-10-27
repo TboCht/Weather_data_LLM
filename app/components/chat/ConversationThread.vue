@@ -85,6 +85,12 @@ defineProps<{
                   >
                     <BubbleContent :class="row.chart ? 'w-full' : undefined">
                       <p>{{ row.text }}</p>
+                      <p
+                        v-if="row.chart && row.chart.question !== row.text"
+                        class="text-muted-foreground mt-2 text-sm"
+                      >
+                        {{ row.chart.question }}
+                      </p>
                       <ChartConversationChart
                         v-if="row.chart"
                         class="mt-3 w-full"

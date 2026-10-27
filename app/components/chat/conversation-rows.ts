@@ -25,6 +25,8 @@ const weatherToolNames = new Set([
   'weathertool',
 ])
 
+export const emptyReply = 'I couldn\'t answer that. Ask for weather in a place, such as tomorrow\'s temperature in Paris.'
+
 export type ConversationRow
   = { id: string, kind: 'person', text: string }
     | { id: string, kind: 'activity', tool: string }
@@ -105,10 +107,13 @@ function rowsForAssistant(message: UIMessage): ConversationRow[] {
     }
     running = null
     if (part.state === 'output-available' && isChartTool(getToolName(part))) {
-      chart = chartFromToolOutput(part.output) ?? chart
-      const nextQuestion = questionFromOutput(part.output)
-      if (nextQuestion)
-        question = nextQuestion
+      const nextChart = chartFromToolOutput(part.output)
+      if (nextChart) {
+        if (chart)
+          flushReply()
+        chart = nextChart
+        question = nextChart.question || questionFromOutput(part.output)
+      }
     }
   }
 
@@ -125,7 +130,7 @@ function rowsForAssistant(message: UIMessage): ConversationRow[] {
   return rows
 }
 
-export function conversationRows(messages: UIMessage[]): ConversationRow[] {
+export function conversationRows(messages: UIMessage[], options?: { complete?: boolean }): ConversationRow[] {
   const rows: ConversationRow[] = []
   for (const message of messages) {
     if (message.role === 'user') {
@@ -134,8 +139,14 @@ export function conversationRows(messages: UIMessage[]): ConversationRow[] {
         rows.push({ id: message.id, kind: 'person', text })
       continue
     }
-    if (message.role === 'assistant')
-      rows.push(...rowsForAssistant(message))
+    if (message.role !== 'assistant')
+      continue
+    const assistantRows = rowsForAssistant(message)
+    if (assistantRows.length === 0 && options?.complete) {
+      rows.push({ id: `${message.id}-reply-0`, kind: 'reply', text: emptyReply, chart: null })
+      continue
+    }
+    rows.push(...assistantRows)
   }
   return rows
 }

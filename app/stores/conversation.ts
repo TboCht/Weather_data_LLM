@@ -1,4 +1,5 @@
 import type { UIMessage } from 'ai'
+import { DefaultChatTransport } from 'ai'
 import { Chat } from '@ai-sdk/vue'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
@@ -19,7 +20,10 @@ export const useConversationStore = defineStore('conversation', () => {
     const existing = chats.get(id)
     if (existing)
       return existing
-    const created = new Chat<UIMessage>({ id })
+    const created = new Chat<UIMessage>({
+      id,
+      transport: new DefaultChatTransport({ api: '/api/chat' }),
+    })
     chats.set(id, created)
     return created
   }

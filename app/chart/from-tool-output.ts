@@ -1,49 +1,43 @@
-export interface ConversationChart {
-  data: Array<Record<string, string | number>>
-  categories: Record<string, { name: string, color?: string }>
-  xAxis: string
-  yLabel?: string
-}
+import type { ConversationChart } from './types.ts'
+
+export type { ConversationChart } from './types.ts'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+const chartTypes = new Set([
+  'line',
+  'area',
+  'bar',
+  'donut',
+  'radial-bar',
+  'funnel',
+  'radar',
+  'bubble',
+  'candlestick',
+  'status-tracker',
+  'sankey',
+  'dotted-map',
+  'topojson-map',
+])
+
 export function chartFromToolOutput(output: unknown): ConversationChart | null {
-  if (!isRecord(output) || output.type !== 'line' || !Array.isArray(output.data) || output.data.length === 0)
+  if (!isRecord(output) || typeof output.type !== 'string' || typeof output.question !== 'string')
     return null
-  if (!isRecord(output.categories) || typeof output.xAxis !== 'string' || output.xAxis === '')
+  if (!chartTypes.has(output.type))
     return null
-
-  const data: ConversationChart['data'] = []
-  for (const row of output.data) {
-    if (!isRecord(row))
+  if (output.type === 'line' || output.type === 'area' || output.type === 'bar') {
+    if (!Array.isArray(output.data) || output.data.length === 0 || !isRecord(output.categories) || typeof output.xAxis !== 'string')
       return null
-    const point: Record<string, string | number> = {}
-    for (const [key, value] of Object.entries(row)) {
-      if (typeof value !== 'string' && typeof value !== 'number')
-        return null
-      point[key] = value
-    }
-    data.push(point)
   }
-
-  const categories: ConversationChart['categories'] = {}
-  for (const [key, value] of Object.entries(output.categories)) {
-    if (!isRecord(value) || typeof value.name !== 'string')
-      return null
-    const category: { name: string, color?: string } = { name: value.name }
-    if (typeof value.color === 'string')
-      category.color = value.color
-    categories[key] = category
-  }
-
-  const chart: ConversationChart = {
-    data,
-    categories,
-    xAxis: output.xAxis,
-  }
-  if (typeof output.yLabel === 'string')
-    chart.yLabel = output.yLabel
-  return chart
+  if (output.type === 'candlestick' && !Array.isArray(output.sets))
+    return null
+  if (output.type === 'sankey' && (!Array.isArray(output.nodes) || !Array.isArray(output.links)))
+    return null
+  if (output.type === 'dotted-map' && !Array.isArray(output.pins))
+    return null
+  if (output.type === 'topojson-map' && !Array.isArray(output.points))
+    return null
+  return output as unknown as ConversationChart
 }

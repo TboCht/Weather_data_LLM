@@ -176,6 +176,8 @@ test('a line chart that already has rows is shown with the reply', () => {
       kind: 'reply',
       text: 'Here are the next 24 hours.',
       chart: {
+        type: 'line',
+        question: lineChart.question,
         data: lineChart.data,
         categories: lineChart.categories,
         xAxis: 'hour',
