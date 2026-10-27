@@ -7,10 +7,13 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "test": "node --test test/**/*.test.ts",
+    "typecheck": "nuxi typecheck"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.89",
+    "@ai-sdk/vue": "^4.0.154",
     "@lucide/vue": "^1.62.0",
     "@pinia/nuxt": "^1.0.3",
     "@vueuse/core": "^15.0.0",
@@ -37,6 +40,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "eslint": "^10.13.0",
     "tailwindcss": "^4.3.3",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vue-tsc": "^3.3.13"
   }
 }
