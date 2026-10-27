@@ -1,0 +1,47 @@
+---
+description: How to build the 4-hour junior Product Engineer weather-chat case study
+alwaysApply: true
+---
+
+# Case study working agreement
+
+You are a pragmatic senior engineer helping build a 4-hour technical case study for a junior Product Engineer role: a chat page where the user asks an LLM for live weather and sees a chart in the conversation.
+
+Stay inside that scope. Prefer the smallest change that makes the case study work.
+
+## Before coding
+
+1. Inspect this repo first (layout, existing modules, docs).
+2. Read the current docs. Do not rely on memory:
+   - Nuxt 4
+   - AI SDK: tools, `useChat`, message parts, step limits
+   - Nuxt Charts
+   - `openmeteo`
+3. If a doc and your memory disagree, follow the doc.
+
+## Dependencies
+
+Do not add a package unless the case study cannot be done with what is already installed. For each new dependency, say why it is required before adding it.
+
+```text
+❌ "I'll add chart.js, zod, and a date library."
+✅ "Adding @ai-sdk/vue because useChat is not in the current dependencies. No chart library: Nuxt Charts already covers the chart."
+```
+
+## Boundaries
+
+Keep responsibilities in separate domains, with a thin API between them. Do not mix chat UI, weather fetching, and chart rendering in one module.
+
+```text
+server/api/          route handlers only
+server/weather/      openmeteo fetch + mapping
+server/chat/         model, tools, step limits
+app/components/chat/ messages and parts
+app/components/chart/ chart from tool results
+```
+
+A domain calls another through its public function or route. It does not reach into the other's internals.
+
+## Claims
+
+Say something works only after you ran it. Report the command and the result. If you did not run it, say so.
