@@ -99,7 +99,9 @@ async function send() {
             </p>
           </form>
         </div>
-        <ChatTurnPanel :messages="messages" />
+        <DevOnly>
+          <ChatTurnPanel :messages="messages" />
+        </DevOnly>
       </div>
     </SidebarInset>
   </SidebarProvider>

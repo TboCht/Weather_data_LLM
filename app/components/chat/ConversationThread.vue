@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ConversationRow } from '@/components/chat/conversation-rows'
+import { replyHasTable } from '@/components/chat/reply-markdown'
 import { CloudSunRain } from '@lucide/vue'
 import { Bubble, BubbleContent } from '@/components/ui/bubble'
 import {
@@ -81,10 +82,10 @@ defineProps<{
                 <MessageContent>
                   <Bubble
                     variant="secondary"
-                    :class="row.chart ? 'w-full max-w-full' : undefined"
+                    :class="row.chart || replyHasTable(row.text) ? 'w-full max-w-full min-w-0' : undefined"
                   >
-                    <BubbleContent :class="row.chart ? 'w-full' : undefined">
-                      <p>{{ row.text }}</p>
+                    <BubbleContent :class="row.chart || replyHasTable(row.text) ? 'w-full min-w-0' : undefined">
+                      <ChatReplyText :text="row.text" />
                       <p
                         v-if="row.chart && row.chart.question !== row.text"
                         class="text-muted-foreground mt-2 text-sm"

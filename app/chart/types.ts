@@ -7,6 +7,7 @@ export interface ChartCategory {
 export interface ChartAxis {
   orientation: 'left' | 'right'
   label: string
+  domain?: [number, number]
 }
 
 export interface AxisChart {
@@ -16,6 +17,7 @@ export interface AxisChart {
   categories: Record<string, ChartCategory>
   xAxis: string
   yLabel?: string
+  yDomain?: [number, number]
   yAxes?: Record<string, ChartAxis>
 }
 

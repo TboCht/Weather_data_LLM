@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { Unit } from '@openmeteo/sdk/unit.js'
 import type { LanguageModelV3StreamPart, UIMessage } from 'ai'
-import { readUIMessageStream, simulateReadableStream } from 'ai'
+import { getToolName, isToolUIPart, readUIMessageStream, simulateReadableStream } from 'ai'
 import { MockLanguageModelV3 } from 'ai/test'
 import { conversationRows, toolActivityLabel } from '../app/components/chat/conversation-rows.ts'
 import { streamConversation } from '../server/chat/open-conversation.ts'
@@ -167,14 +167,28 @@ async function ask(input: {
     openMeteo: input.openMeteo,
   })
   const activity: string[] = []
+  const seenCalls = new Set<string>()
   let assistant: UIMessage | undefined
   for await (const message of readUIMessageStream({
     stream: result.toUIMessageStream({ sendReasoning: true }),
   })) {
     assistant = message
-    for (const row of conversationRows([...input.messages, message])) {
-      if (row.kind === 'activity' && activity.at(-1) !== row.tool)
-        activity.push(row.tool)
+    const live = conversationRows([...input.messages, message], { complete: false })
+    const last = live.at(-1)
+    const activities = live.filter(row => row.kind === 'activity')
+    if (last?.kind === 'reply') {
+      assert.equal(activities.length, 0)
+    }
+    else {
+      assert.equal(last?.kind, 'activity')
+      assert.equal(activities.length, 1)
+      assert.equal(last?.kind === 'activity' ? last.tool : '', 'Thinking')
+    }
+    for (const part of message.parts) {
+      if (!isToolUIPart(part) || seenCalls.has(part.toolCallId))
+        continue
+      seenCalls.add(part.toolCallId)
+      activity.push(toolActivityLabel(getToolName(part)))
     }
   }
   if (!assistant)
@@ -266,8 +280,8 @@ test('a clear place becomes a line chart', async () => {
   assert.equal(reply.chart.categories[column]?.color, '#c0392b')
   assert.equal(reply.chart.yLabel, '°C')
   assert.deepEqual(reply.chart.data.map(row => row.time), [
-    '2026-10-28 09:00',
-    '2026-10-28 10:00',
+    '09:00',
+    '10:00',
   ])
   assert.deepEqual(reply.chart.data.map(row => row[column]), [11, 12])
   assert.equal(openMeteo.fetches.length, 1)
@@ -347,7 +361,9 @@ test('several places are geocoded once and charted on two axes', async () => {
   if (reply?.kind !== 'reply' || reply.chart?.type !== 'line')
     assert.fail('expected a line chart')
   assert.equal(reply.chart.yLabel, '°C')
-  assert.deepEqual(reply.chart.yAxes, { '%': { orientation: 'right', label: '%' } })
+  assert.deepEqual(reply.chart.yAxes, {
+    '%': { orientation: 'right', label: '%', domain: [64, 72] },
+  })
   const names = Object.values(reply.chart.categories).map(category => category.name)
   assert.deepEqual(names, [
     'Paris, Temperature (2 m)',
@@ -530,7 +546,7 @@ test('a clarification ends the turn and the next message gets 8 new steps', asyn
   assert.equal(firstReply.chart, null)
 
   const secondModel = scriptedModel(() => ({ toolName: 'geocode', input: { names: ['Paris, France'] } }))
-  const second = await ask({
+  await ask({
     messages: [
       ...first.messages,
       person('person-2', 'Paris, France'),
@@ -636,8 +652,8 @@ test('mixed time zones share a UTC axis', async () => {
   if (reply?.kind !== 'reply' || reply.chart?.type !== 'line')
     assert.fail('expected a line chart')
   assert.deepEqual(reply.chart.data.map(row => row.time), [
-    '2026-10-28 08:00 UTC',
-    '2026-10-28 09:00 UTC',
+    '08:00 UTC',
+    '09:00 UTC',
   ])
 })
 
@@ -946,7 +962,7 @@ test('candlestick folds hours into a day, and a second chart is a second call', 
   if (candles?.kind !== 'reply' || candles.chart?.type !== 'candlestick')
     assert.fail('expected candles')
   assert.deepEqual(candles.chart.sets[0]?.data, [{
-    label: '2026-10-28',
+    label: 'Wed 28',
     open: 10,
     high: 12,
     low: 8,

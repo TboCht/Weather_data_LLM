@@ -1,4 +1,5 @@
 import type { PlaceMatch, WeatherLocation, WeatherResponse, WeatherSection, WeatherVariable } from '../../server/weather/types.ts'
+import { valueDomain } from './scale.ts'
 import type { ConversationChart } from './types.ts'
 
 export interface ChartSeriesInput {
@@ -53,16 +54,106 @@ function samePlace(left: number, right: number) {
   return Math.abs(left - right) < 0.01
 }
 
-function formatTime(unixSeconds: number, offsetSeconds: number | null) {
+const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+interface CalendarParts {
+  year: number
+  month: number
+  day: number
+  weekday: number
+  hours: number
+  minutes: number
+}
+
+type TimeScale = 'time' | 'weekday-time' | 'day-time' | 'day-year-time' | 'weekday' | 'day' | 'day-year' | 'month'
+
+function calendarParts(unixSeconds: number, offsetSeconds: number | null): CalendarParts {
   const shifted = offsetSeconds === null ? unixSeconds : unixSeconds + offsetSeconds
   const date = new Date(shifted * 1000)
-  const year = date.getUTCFullYear()
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(date.getUTCDate()).padStart(2, '0')
-  const hour = String(date.getUTCHours()).padStart(2, '0')
-  const minute = String(date.getUTCMinutes()).padStart(2, '0')
-  const stamp = `${year}-${month}-${day} ${hour}:${minute}`
-  return offsetSeconds === null ? `${stamp} UTC` : stamp
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth(),
+    day: date.getUTCDate(),
+    weekday: date.getUTCDay(),
+    hours: date.getUTCHours(),
+    minutes: date.getUTCMinutes(),
+  }
+}
+
+function medianStep(times: number[]) {
+  if (times.length < 2)
+    return 0
+  const sorted = [...times].sort((left, right) => left - right)
+  const steps: number[] = []
+  for (let index = 1; index < sorted.length; index += 1) {
+    const step = sorted[index]! - sorted[index - 1]!
+    if (step > 0)
+      steps.push(step)
+  }
+  if (steps.length === 0)
+    return 0
+  steps.sort((left, right) => left - right)
+  return steps[Math.floor(steps.length / 2)] ?? 0
+}
+
+function timeScale(times: number[], offsetSeconds: number | null, kind: 'hourly' | 'daily'): TimeScale {
+  const unique = [...new Set(times)].sort((left, right) => left - right)
+  const first = unique[0]
+  const last = unique[unique.length - 1]
+  if (first === undefined || last === undefined)
+    return 'day'
+  const start = calendarParts(first, offsetSeconds)
+  const end = calendarParts(last, offsetSeconds)
+  const span = last - first
+  const step = medianStep(unique)
+  const sameDay = start.year === end.year && start.month === end.month && start.day === end.day
+  const sameYear = start.year === end.year
+  const daily = kind === 'daily' || step >= 20 * 3600
+  if (daily) {
+    if (step >= 20 * 86400)
+      return 'month'
+    if (!sameYear || span > 400 * 86400)
+      return 'day-year'
+    if (span <= 8 * 86400)
+      return 'weekday'
+    return 'day'
+  }
+  if (sameDay)
+    return 'time'
+  if (span <= 8 * 86400)
+    return 'weekday-time'
+  if (sameYear)
+    return 'day-time'
+  return 'day-year-time'
+}
+
+function renderTime(parts: CalendarParts, scale: TimeScale) {
+  const dayMonth = `${parts.day} ${months[parts.month]}`
+  const clock = `${String(parts.hours).padStart(2, '0')}:${String(parts.minutes).padStart(2, '0')}`
+  if (scale === 'time')
+    return clock
+  if (scale === 'weekday-time')
+    return `${weekdays[parts.weekday]} ${parts.day} ${clock}`
+  if (scale === 'day-time')
+    return `${dayMonth} ${clock}`
+  if (scale === 'day-year-time')
+    return `${dayMonth} ${parts.year} ${clock}`
+  if (scale === 'weekday')
+    return `${weekdays[parts.weekday]} ${parts.day}`
+  if (scale === 'day')
+    return dayMonth
+  if (scale === 'month')
+    return `${months[parts.month]} ${parts.year}`
+  return `${dayMonth} ${parts.year}`
+}
+
+function formatTimes(times: number[], offsetSeconds: number | null, kind: 'hourly' | 'daily') {
+  const scale = timeScale(times, offsetSeconds, kind)
+  return (unixSeconds: number) => {
+    const label = renderTime(calendarParts(unixSeconds, offsetSeconds), scale)
+    return offsetSeconds === null ? `${label} UTC` : label
+  }
 }
 
 function latestValue(values: Array<number | null>) {
@@ -147,6 +238,33 @@ function sharedOffset(series: FoundSeries[]) {
   return series.every(item => item.offset === first) ? first : null
 }
 
+function plottedValues(item: FoundSeries) {
+  if (item.section === 'current') {
+    const latest = latestValue(item.values)
+    return latest === null ? [] : [latest]
+  }
+  return item.values.filter((value): value is number => typeof value === 'number')
+}
+
+function axisScale(series: FoundSeries[], primary: string, yAxes: Record<string, { orientation: 'left' | 'right', label: string }>) {
+  const groups = new Map<string, number[]>()
+  for (const item of series) {
+    const values = groups.get(item.unit) ?? []
+    values.push(...plottedValues(item))
+    groups.set(item.unit, values)
+  }
+  const yDomain = valueDomain(groups.get(primary) ?? [])
+  const scaled: Record<string, { orientation: 'left' | 'right', label: string, domain?: [number, number] }> = {}
+  for (const [unit, axis] of Object.entries(yAxes)) {
+    const domain = valueDomain(groups.get(unit) ?? [])
+    scaled[unit] = domain ? { ...axis, domain } : axis
+  }
+  return {
+    ...yDomain ? { yDomain } : {},
+    ...Object.keys(scaled).length > 0 ? { yAxes: scaled } : {},
+  }
+}
+
 function axisChart(type: 'line' | 'area' | 'bar', question: string, series: FoundSeries[]): ConversationChart {
   const units: string[] = []
   for (const item of series) {
@@ -166,13 +284,14 @@ function axisChart(type: 'line' | 'area' | 'bar', question: string, series: Foun
     ...item.unit === primary ? {} : { yAxis: item.unit },
   }]))
 
+  const scale = axisScale(series, primary, yAxes)
   if (series.every(item => item.section === 'current')) {
     return {
       type,
       question,
       xAxis: 'label',
       yLabel: primary,
-      ...Object.keys(yAxes).length > 0 ? { yAxes } : {},
+      ...scale,
       categories,
       data: series.map(item => ({
         label: item.label,
@@ -182,13 +301,21 @@ function axisChart(type: 'line' | 'area' | 'bar', question: string, series: Foun
   }
 
   const offset = sharedOffset(series)
+  const times: number[] = []
+  for (const item of series) {
+    for (const unix of item.time) {
+      if (typeof unix === 'number')
+        times.push(unix)
+    }
+  }
+  const format = formatTimes(times, offset, series.every(item => item.section === 'daily') ? 'daily' : 'hourly')
   const rows = new Map<number, Record<string, string | number>>()
   for (const item of series) {
     for (const [index, unix] of item.time.entries()) {
       const value = item.values[index]
       if (typeof value !== 'number' || typeof unix !== 'number')
         continue
-      const row = rows.get(unix) ?? { time: formatTime(unix, offset) }
+      const row = rows.get(unix) ?? { time: format(unix) }
       row[item.key] = value
       rows.set(unix, row)
     }
@@ -198,7 +325,7 @@ function axisChart(type: 'line' | 'area' | 'bar', question: string, series: Foun
     question,
     xAxis: 'time',
     yLabel: primary,
-    ...Object.keys(yAxes).length > 0 ? { yAxes } : {},
+    ...scale,
     categories,
     data: [...rows.entries()]
       .sort((left, right) => left[0] - right[0])
@@ -298,19 +425,21 @@ function candlestickChart(question: string, series: FoundSeries[]) {
     return failure('a candlestick chart needs an hourly series.')
   const offset = sharedOffset(series)
   const sets = series.map((item) => {
-    const days = new Map<string, number[]>()
+    const days = new Map<number, number[]>()
     for (const [index, unix] of item.time.entries()) {
       const value = item.values[index]
       if (typeof value !== 'number' || typeof unix !== 'number')
         continue
-      const day = formatTime(unix, offset).slice(0, 10)
+      const parts = calendarParts(unix, offset)
+      const day = Date.UTC(parts.year, parts.month, parts.day) / 1000
       days.set(day, [...(days.get(day) ?? []), value])
     }
+    const format = formatTimes([...days.keys()], 0, 'daily')
     return {
       name: item.label,
       color: item.color,
-      data: [...days.entries()].map(([label, values]) => ({
-        label,
+      data: [...days.entries()].map(([day, values]) => ({
+        label: format(day),
         open: values[0] ?? 0,
         high: Math.max(...values),
         low: Math.min(...values),
@@ -327,13 +456,15 @@ function statusChart(question: string, series: FoundSeries[]): ConversationChart
   const data = []
   const categories: Record<string, { name: string, color?: string }> = {}
   if (first) {
+    const times = first.time.filter((unix): unix is number => typeof unix === 'number')
+    const format = formatTimes(times, offset, first.section === 'daily' ? 'daily' : 'hourly')
     for (const [index, unix] of first.time.entries()) {
       const value = first.values[index]
       if (typeof value !== 'number' || typeof unix !== 'number')
         continue
       const status = String(value)
       categories[status] = { name: status, color: first.color }
-      data.push({ status, label: formatTime(unix, offset), value })
+      data.push({ status, label: format(unix), value })
     }
   }
   return { type: 'status-tracker', question, data, categories }

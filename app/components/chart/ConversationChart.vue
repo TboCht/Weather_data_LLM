@@ -16,6 +16,12 @@ function bubbleRows(chart: Extract<ConversationChart, { type: 'bubble' }>) {
 function bubbleNumber(key: 'x' | 'y' | 'size') {
   return (row: Record<string, unknown>) => typeof row[key] === 'number' ? row[key] : null
 }
+
+function timeTickCount(count: number) {
+  if (count <= 12)
+    return undefined
+  return 8
+}
 </script>
 
 <template>
@@ -25,7 +31,9 @@ function bubbleNumber(key: 'x' | 'y' | 'size') {
     :categories="chart.categories"
     :height="220"
     :x-axis="chart.xAxis"
+    :x-num-ticks="chart.xAxis === 'time' ? timeTickCount(chart.data.length) : undefined"
     :y-label="chart.yLabel"
+    :y-domain="chart.yDomain"
     :y-axes="chart.yAxes"
   />
   <AreaChart
@@ -34,7 +42,9 @@ function bubbleNumber(key: 'x' | 'y' | 'size') {
     :categories="chart.categories"
     :height="220"
     :x-axis="chart.xAxis"
+    :x-num-ticks="chart.xAxis === 'time' ? timeTickCount(chart.data.length) : undefined"
     :y-label="chart.yLabel"
+    :y-domain="chart.yDomain"
     :y-axes="chart.yAxes"
   />
   <BarChart
@@ -43,8 +53,10 @@ function bubbleNumber(key: 'x' | 'y' | 'size') {
     :categories="chart.categories"
     :height="220"
     :x-axis="chart.xAxis"
+    :x-num-ticks="chart.xAxis === 'time' ? timeTickCount(chart.data.length) : undefined"
     :y-axis="barSeries(chart)"
     :y-label="chart.yLabel"
+    :y-domain="chart.yDomain"
     :y-axes="chart.yAxes"
   />
   <DonutChart

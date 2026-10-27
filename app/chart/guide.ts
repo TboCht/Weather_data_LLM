@@ -13,4 +13,6 @@ export const chartGuide = `When a Weather response is in hand, pick a chart. Wri
 - Sankey: how an amount moves from one thing to another.
 - Map: where the places are.
 
-Choose colors with purpose. Temperature is red. Precipitation is blue. Give any other variable a color that matches what it measures. When several series are the same kind of data, use shades distinct enough to tell apart.`
+Choose colors with purpose. Temperature is red. Precipitation is blue. Give any other variable a color that matches what it measures. When several series are the same kind of data, use shades distinct enough to tell apart.
+
+An axis starts at 0 when the values reach 0 or sit close to it. When they do not, the axis starts near the data, so a small change stays visible.`

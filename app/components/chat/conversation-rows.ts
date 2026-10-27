@@ -27,6 +27,8 @@ const weatherToolNames = new Set([
 
 export const emptyReply = 'I couldn\'t answer that. Ask for weather in a place, such as tomorrow\'s temperature in Paris.'
 
+export const thinkingLabel = 'Thinking'
+
 export type ConversationRow
   = { id: string, kind: 'person', text: string }
     | { id: string, kind: 'activity', tool: string }
@@ -69,11 +71,11 @@ function textFromParts(message: UIMessage) {
     .join('')
 }
 
-function rowsForAssistant(message: UIMessage): ConversationRow[] {
+function rowsForAssistant(message: UIMessage, pending: boolean): ConversationRow[] {
   let text = ''
   let chart: ConversationChart | null = null
   let question = ''
-  let running: string | null = null
+  let running = false
   const rows: ConversationRow[] = []
 
   function flushReply() {
@@ -101,11 +103,9 @@ function rowsForAssistant(message: UIMessage): ConversationRow[] {
     if (part.type === 'reasoning' || part.type === 'step-start' || !isToolUIPart(part))
       continue
     if (runningStates.has(part.state)) {
-      flushReply()
-      running = toolActivityLabel(getToolName(part))
+      running = true
       continue
     }
-    running = null
     if (part.state === 'output-available' && isChartTool(getToolName(part))) {
       const nextChart = chartFromToolOutput(part.output)
       if (nextChart) {
@@ -117,13 +117,12 @@ function rowsForAssistant(message: UIMessage): ConversationRow[] {
     }
   }
 
-  if (running) {
-    rows.push({
+  if ((running || pending) && text.trim() === '' && chart === null && rows.length === 0) {
+    return [{
       id: `${message.id}-activity`,
       kind: 'activity',
-      tool: running,
-    })
-    return rows
+      tool: thinkingLabel,
+    }]
   }
 
   flushReply()
@@ -141,12 +140,22 @@ export function conversationRows(messages: UIMessage[], options?: { complete?: b
     }
     if (message.role !== 'assistant')
       continue
-    const assistantRows = rowsForAssistant(message)
+    const assistantRows = rowsForAssistant(message, options?.complete === false)
     if (assistantRows.length === 0 && options?.complete) {
       rows.push({ id: `${message.id}-reply-0`, kind: 'reply', text: emptyReply, chart: null })
       continue
     }
     rows.push(...assistantRows)
+  }
+  if (options?.complete === false) {
+    const last = rows.at(-1)
+    if (!last || last.kind === 'person') {
+      rows.push({
+        id: `${last?.id ?? 'draft'}-thinking`,
+        kind: 'activity',
+        tool: thinkingLabel,
+      })
+    }
   }
   return rows
 }

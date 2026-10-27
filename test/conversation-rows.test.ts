@@ -35,7 +35,7 @@ test('a person message is their text', () => {
   ])
 })
 
-test('a running Geocode tool is one Tool activity line', () => {
+test('a running tool is one Thinking line', () => {
   const rows = conversationRows([
     message({
       id: 'person-1',
@@ -59,11 +59,11 @@ test('a running Geocode tool is one Tool activity line', () => {
 
   assert.deepEqual(rows, [
     { id: 'person-1', kind: 'person', text: 'Weather in Paris' },
-    { id: 'assistant-1-activity', kind: 'activity', tool: 'Geocode tool' },
+    { id: 'assistant-1-activity', kind: 'activity', tool: 'Thinking' },
   ])
 })
 
-test('a running forecast tool is Tool activity named Weather tool', () => {
+test('a running forecast tool stays Thinking instead of naming the tool', () => {
   const rows = conversationRows([
     message({
       id: 'assistant-1',
@@ -87,7 +87,50 @@ test('a running forecast tool is Tool activity named Weather tool', () => {
   ])
 
   assert.deepEqual(rows, [
-    { id: 'assistant-1-activity', kind: 'activity', tool: 'Weather tool' },
+    { id: 'assistant-1-activity', kind: 'activity', tool: 'Thinking' },
+  ])
+})
+
+test('Thinking stays up between tool calls until the reply arrives', () => {
+  const rows = conversationRows([
+    message({
+      id: 'person-1',
+      role: 'user',
+      parts: [{ type: 'text', text: 'Weather in Paris' }],
+    }),
+    message({
+      id: 'assistant-1',
+      role: 'assistant',
+      parts: [
+        {
+          type: 'tool-geocode',
+          toolCallId: 'call-1',
+          state: 'output-available',
+          input: { places: ['Paris'] },
+          output: [],
+        },
+      ],
+    }),
+  ], { complete: false })
+
+  assert.deepEqual(rows, [
+    { id: 'person-1', kind: 'person', text: 'Weather in Paris' },
+    { id: 'assistant-1-activity', kind: 'activity', tool: 'Thinking' },
+  ])
+})
+
+test('Thinking shows as soon as a turn is in progress', () => {
+  const rows = conversationRows([
+    message({
+      id: 'person-1',
+      role: 'user',
+      parts: [{ type: 'text', text: 'Weather in Paris' }],
+    }),
+  ], { complete: false })
+
+  assert.deepEqual(rows, [
+    { id: 'person-1', kind: 'person', text: 'Weather in Paris' },
+    { id: 'person-1-thinking', kind: 'activity', tool: 'Thinking' },
   ])
 })
 
@@ -109,7 +152,7 @@ test('reasoning text is not shown', () => {
   ])
 
   assert.deepEqual(rows, [
-    { id: 'assistant-1-activity', kind: 'activity', tool: 'Geocode tool' },
+    { id: 'assistant-1-activity', kind: 'activity', tool: 'Thinking' },
   ])
 })
 
