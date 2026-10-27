@@ -2,6 +2,9 @@
 
 Tech case study: a chat page where the user talks to an LLM and can ask for real, live weather data, which comes back as a chart displayed directly in the conversation.
 
+## Live 
+https://weatherdatachat.vercel.app/
+
 ## Run
 
 Requires Node.js 22 or newer.
