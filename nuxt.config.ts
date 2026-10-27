@@ -2,7 +2,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  modules: ['@nuxt/eslint', 'shadcn-nuxt', 'nuxt-charts'],
+  modules: ['@pinia/nuxt', '@nuxt/eslint', 'shadcn-nuxt', 'nuxt-charts'],
   shadcn: {
     prefix: '',
     componentDir: '@/components/ui',
