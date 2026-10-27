@@ -117,7 +117,7 @@ export async function streamConversation(input: {
     stopWhen: stepCountIs(8),
     providerOptions: {
       anthropic: {
-        thinking: { type: 'enabled', budgetTokens: 2048 },
+        thinking: { type: 'disabled' },
       },
     },
     prepareStep: () => ({
