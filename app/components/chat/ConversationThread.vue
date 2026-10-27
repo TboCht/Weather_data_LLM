@@ -25,14 +25,14 @@ defineProps<{
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col">
+  <div class="flex min-h-0 min-w-0 flex-1 flex-col">
     <MessageScrollerProvider
       :auto-scroll="true"
       default-scroll-position="end"
     >
       <MessageScroller class="min-h-0 flex-1">
         <MessageScrollerViewport class="min-h-0 flex-1">
-          <MessageScrollerContent>
+          <MessageScrollerContent class="pb-6">
             <Empty
               v-if="rows.length === 0"
               class="my-auto border-0"
@@ -51,7 +51,7 @@ defineProps<{
               v-for="(row, index) in rows"
               :key="row.id"
               :message-id="row.id"
-              :scroll-anchor="index === rows.length - 1"
+              :scroll-anchor="index === rows.length - 1 && row.kind === 'reply'"
             >
               <Message
                 v-if="row.kind === 'person'"

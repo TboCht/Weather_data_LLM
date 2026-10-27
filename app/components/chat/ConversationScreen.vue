@@ -60,8 +60,8 @@ async function send() {
       <header class="flex h-12 shrink-0 items-center px-2">
         <SidebarTrigger class="cursor-pointer" />
       </header>
-      <div class="flex min-h-0 flex-1">
-        <div class="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4">
+      <div class="flex min-h-0 min-w-0 flex-1">
+        <div class="mx-auto flex min-h-0 w-full min-w-0 max-w-3xl flex-1 flex-col gap-4 px-4">
           <ChatConversationThread
             class="min-h-0 flex-1"
             :rows="rows"
