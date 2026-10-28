@@ -8,9 +8,12 @@ import {
   InputGroupTextarea,
 } from '@/components/ui/input-group'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { SIDEBAR_COOKIE_NAME } from '@/components/ui/sidebar/utils'
 import { useConversationStore } from '@/stores/conversation'
 
 const store = useConversationStore()
+const sidebarState = useCookie(SIDEBAR_COOKIE_NAME)
+const defaultOpen = sidebarState.value !== 'false'
 
 const draft = computed({
   get: () => store.active?.draft ?? '',
@@ -54,7 +57,7 @@ async function send() {
 </script>
 
 <template>
-  <SidebarProvider :default-open="true" class="h-dvh">
+  <SidebarProvider :default-open="defaultOpen" class="h-dvh">
     <ChatConversationSidebar />
     <SidebarInset class="h-dvh min-h-0 overflow-hidden">
       <header class="flex h-12 shrink-0 items-center px-2">
