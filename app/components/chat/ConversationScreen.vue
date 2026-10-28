@@ -54,7 +54,7 @@ async function send() {
 </script>
 
 <template>
-  <SidebarProvider class="h-dvh">
+  <SidebarProvider :default-open="true" class="h-dvh">
     <ChatConversationSidebar />
     <SidebarInset class="h-dvh min-h-0 overflow-hidden">
       <header class="flex h-12 shrink-0 items-center px-2">
