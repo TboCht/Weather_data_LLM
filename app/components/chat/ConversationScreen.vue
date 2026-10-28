@@ -12,8 +12,9 @@ import { SIDEBAR_COOKIE_NAME } from '@/components/ui/sidebar/utils'
 import { useConversationStore } from '@/stores/conversation'
 
 const store = useConversationStore()
-const sidebarState = useCookie(SIDEBAR_COOKIE_NAME)
-const defaultOpen = sidebarState.value !== 'false'
+// SidebarProvider writes "true"/"false"; Nuxt useCookie JSON-parses those to booleans.
+const sidebarState = useCookie<boolean | string | null>(SIDEBAR_COOKIE_NAME)
+const defaultOpen = String(sidebarState.value ?? true) !== 'false'
 
 const draft = computed({
   get: () => store.active?.draft ?? '',
